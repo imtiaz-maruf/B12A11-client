@@ -3,7 +3,7 @@
 A modern platform connecting home chefs with food lovers.
 
 ## Live URL
-- Client: https://b12a11-imtiaz-local-chef-bazaar.netlify.app
+- Client: https://b12-a11-client.vercel.app
 - Server: https://b12a11server.vercel.app/
 
 
