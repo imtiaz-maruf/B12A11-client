@@ -1,99 +1,126 @@
-// ============================================================================
-// CRITICAL FIX 2: Check Cookie Immediately After Login
-// CLIENT/src/components/Login.jsx
-// ============================================================================
-
+// ===========================================
+// CLIENT/src/pages/public/Login.jsx
+// ===========================================
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { motion } from 'framer-motion';
+import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import useAuth from '../../hooks/useAuth';
+import useTitle from '../../hooks/useTitle';
 import toast from 'react-hot-toast';
 
 const Login = () => {
-    const [formData, setFormData] = useState({ email: '', password: '' });
-    const [loading, setLoading] = useState(false);
-
+    useTitle('Login');
+    const [showPassword, setShowPassword] = useState(false);
     const { loginUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const from = location.state?.from?.pathname || '/';
 
-    const from = location.state?.from || '/';
+    const {
+        register,
+        handleSubmit,
+        formState: { errors }
+    } = useForm();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-
+    const onSubmit = async (data) => {
         try {
-            console.log('🔐 Attempting login for:', formData.email);
-
-            // Login (this now handles JWT token internally)
-            await loginUser(formData.email, formData.password);
-
-            // ✅ CRITICAL: Verify cookie was set
-            const cookies = document.cookie.split(';').map(c => c.trim());
-            const tokenCookie = cookies.find(c => c.startsWith('token='));
-
-            console.log('📋 All cookies:', cookies);
-            console.log('🍪 Token cookie:', tokenCookie || 'NOT FOUND');
-
-            if (!tokenCookie) {
-                console.error('❌ WARNING: No token cookie found after login!');
-                toast.error('Login succeeded but token not set. Please try again.');
-                return;
-            }
-
-            console.log('✅ Login successful with cookie');
+            await loginUser(data.email, data.password);
             toast.success('Login successful!');
-
-            // Small delay to ensure cookie is ready
-            setTimeout(() => {
-                navigate(from, { replace: true });
-            }, 100);
-
+            navigate(from, { replace: true });
         } catch (error) {
-            console.error('❌ Login error:', error);
-            toast.error(error.message || 'Login failed');
-        } finally {
-            setLoading(false);
+            console.error('Login error:', error);
+            toast.error(error.message || 'Failed to login');
         }
     };
 
     return (
-        <div className="max-w-md mx-auto p-6">
-            <h2 className="text-2xl font-bold mb-6">Login</h2>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-900 dark:to-gray-800 px-4 py-12">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full max-w-md"
+            >
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+                            Welcome Back!
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            Login to continue to LocalChefBazaar
+                        </p>
+                    </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border rounded"
-                />
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        {/* Email */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Email</label>
+                            <div className="relative">
+                                <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="email"
+                                    {...register('email', {
+                                        required: 'Email is required',
+                                        pattern: {
+                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                            message: 'Invalid email address'
+                                        }
+                                    })}
+                                    className="input-field pl-10"
+                                    placeholder="Enter your email"
+                                />
+                            </div>
+                            {errors.email && (
+                                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                            )}
+                        </div>
 
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border rounded"
-                />
+                        {/* Password */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Password</label>
+                            <div className="relative">
+                                <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    {...register('password', {
+                                        required: 'Password is required',
+                                        minLength: {
+                                            value: 6,
+                                            message: 'Password must be at least 6 characters'
+                                        }
+                                    })}
+                                    className="input-field pl-10 pr-10"
+                                    placeholder="Enter your password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                                </button>
+                            </div>
+                            {errors.password && (
+                                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                            )}
+                        </div>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-                >
-                    {loading ? 'Logging in...' : 'Login'}
-                </button>
-            </form>
+                        {/* Submit Button */}
+                        <button type="submit" className="w-full btn-primary">
+                            Login
+                        </button>
+                    </form>
 
-            {/* Debug Info (remove in production) */}
-            <div className="mt-4 p-4 bg-gray-100 rounded text-xs">
-                <p className="font-bold">Debug Info:</p>
-                <p>Current cookies: {document.cookie || 'None'}</p>
-            </div>
+                    <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
+                        Don't have an account?{' '}
+                        <Link to="/register" className="text-primary-600 hover:text-primary-700 font-semibold">
+                            Register here
+                        </Link>
+                    </p>
+                </div>
+            </motion.div>
         </div>
     );
 };
