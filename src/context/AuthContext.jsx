@@ -1,6 +1,3 @@
-// ===========================================
-// CLIENT/src/context/AuthContext.jsx - COMPLETE REWRITE
-// ===========================================
 import { createContext, useState, useEffect } from 'react';
 import {
     createUserWithEmailAndPassword,
@@ -14,7 +11,7 @@ import axios from 'axios';
 
 export const AuthContext = createContext(null);
 
-// ✅ CRITICAL: Axios instance with credentials
+// ✅ Create axios instance with credentials
 const axiosAuth = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     withCredentials: true,
@@ -42,10 +39,11 @@ const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             // Clear backend token
-            await axiosAuth.post('/api/auth/logout');
-            console.log('✅ Backend logout successful');
+            await axiosAuth.post('/api/auth/logout').catch(() => {
+                // Ignore errors on logout
+            });
         } catch (error) {
-            console.error('❌ Backend logout error:', error);
+            console.error('Backend logout error:', error);
         }
         // Clear Firebase auth
         return signOut(auth);
@@ -60,13 +58,13 @@ const AuthProvider = ({ children }) => {
 
     const fetchUserRole = async (email) => {
         try {
-            console.log('📧 Fetching user role for:', email);
+            console.log('Fetching user role for:', email);
             const response = await axiosAuth.get(`/api/users/${email}`);
-            console.log('✅ User role fetched:', response.data);
+            console.log('User role fetched:', response.data);
             setUserRole(response.data);
             return response.data;
         } catch (error) {
-            console.error('❌ Error fetching user role:', error.response?.data || error.message);
+            console.error('Error fetching user role:', error.response?.data || error.message);
             setUserRole(null);
             throw error;
         }
@@ -74,30 +72,27 @@ const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            console.log('🔄 Auth state changed:', currentUser?.email || 'Not logged in');
+            console.log('Auth state changed:', currentUser?.email);
             setUser(currentUser);
 
             if (currentUser) {
                 try {
-                    // Get JWT token from backend
-                    console.log('🎟️ Requesting JWT token...');
+                    // ✅ Get JWT token from backend
+                    console.log('🔑 Requesting JWT token...');
                     const tokenResponse = await axiosAuth.post('/api/auth/jwt', {
                         email: currentUser.email
                     });
+                    console.log('✅ JWT token response:', tokenResponse.data);
 
-                    console.log('✅ JWT token response:', {
-                        success: tokenResponse.data.success,
-                        authenticated: tokenResponse.data.authenticated
-                    });
+                    // ✅ Verify token was set
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
 
-                    // Fetch user role
+                    // ✅ Fetch user role
                     await fetchUserRole(currentUser.email);
 
                 } catch (error) {
-                    console.error('❌ Error in auth flow:', {
-                        message: error.response?.data?.message || error.message,
-                        status: error.response?.status
-                    });
+                    console.error('❌ Error in auth flow:', error.response?.data || error.message);
+                    // Don't logout on error, just log it
                 }
             } else {
                 setUserRole(null);

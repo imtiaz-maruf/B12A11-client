@@ -1,15 +1,12 @@
-// ===========================================
-// CLIENT/src/hooks/useAxiosSecure.js - COMPLETE REWRITE
-// ===========================================
 import { useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import useAuth from './useAuth';
 
-// ✅ CRITICAL: Create axios instance with proper config
+// ✅ Create axios instance with credentials
 const axiosSecure = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    withCredentials: true, // ✅ Always send cookies
+    withCredentials: true, // CRITICAL: This sends cookies
     headers: {
         'Content-Type': 'application/json'
     }
@@ -20,11 +17,10 @@ const useAxiosSecure = () => {
     const { logoutUser } = useAuth();
 
     useEffect(() => {
-        // Request interceptor
+        // ✅ Request interceptor
         const requestInterceptor = axiosSecure.interceptors.request.use(
             (config) => {
-                console.log('📤 Making request to:', config.url);
-                console.log('🍪 WithCredentials:', config.withCredentials);
+                console.log('📤 Request:', config.method.toUpperCase(), config.url);
                 return config;
             },
             (error) => {
@@ -33,44 +29,35 @@ const useAxiosSecure = () => {
             }
         );
 
-        // Response interceptor
+        // ✅ Response interceptor
         const responseInterceptor = axiosSecure.interceptors.response.use(
             (response) => {
-                console.log('✅ Response from:', response.config.url);
+                console.log('✅ Response:', response.config.url, response.status);
                 return response;
             },
             async (error) => {
                 const status = error.response?.status;
-                const url = error.config?.url;
 
-                console.error('❌ Axios Error:', {
+                console.error('❌ Response error:', {
                     status,
-                    url,
-                    message: error.response?.data?.message,
-                    authenticated: error.response?.data?.authenticated
+                    url: error.config?.url,
+                    message: error.response?.data?.message
                 });
 
-                // Handle 401/403 errors
                 if (status === 401 || status === 403) {
-                    console.log('🔒 Authentication failed, logging out...');
+                    console.log('🚪 Unauthorized - logging out...');
                     try {
                         await logoutUser();
                     } catch (err) {
                         console.error('Logout error:', err);
                     }
-                    navigate('/login', {
-                        replace: true,
-                        state: {
-                            message: 'Your session has expired. Please login again.'
-                        }
-                    });
+                    navigate('/login', { replace: true });
                 }
 
                 return Promise.reject(error);
             }
         );
 
-        // Cleanup
         return () => {
             axiosSecure.interceptors.request.eject(requestInterceptor);
             axiosSecure.interceptors.response.eject(responseInterceptor);
