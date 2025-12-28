@@ -3,10 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import useAuth from './useAuth';
 
-// ✅ Create axios instance with credentials
 const axiosSecure = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    withCredentials: true, // CRITICAL: This sends cookies
     headers: {
         'Content-Type': 'application/json'
     }
@@ -17,10 +15,18 @@ const useAxiosSecure = () => {
     const { logoutUser } = useAuth();
 
     useEffect(() => {
-        // ✅ Request interceptor
+        // ✅ Request interceptor - Add Authorization header
         const requestInterceptor = axiosSecure.interceptors.request.use(
             (config) => {
-                console.log('📤 Request:', config.method.toUpperCase(), config.url);
+                const token = localStorage.getItem('token');
+
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                    console.log('📤 Request with token:', config.method.toUpperCase(), config.url);
+                } else {
+                    console.log('⚠️ No token found for request:', config.url);
+                }
+
                 return config;
             },
             (error) => {
@@ -46,6 +52,7 @@ const useAxiosSecure = () => {
 
                 if (status === 401 || status === 403) {
                     console.log('🚪 Unauthorized - logging out...');
+                    localStorage.removeItem('token');
                     try {
                         await logoutUser();
                     } catch (err) {

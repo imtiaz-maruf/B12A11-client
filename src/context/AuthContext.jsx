@@ -11,10 +11,8 @@ import axios from 'axios';
 
 export const AuthContext = createContext(null);
 
-// ✅ Create axios instance with credentials
 const axiosAuth = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    withCredentials: true,
     headers: {
         'Content-Type': 'application/json'
     }
@@ -38,14 +36,12 @@ const AuthProvider = ({ children }) => {
     const logoutUser = async () => {
         setLoading(true);
         try {
-            // Clear backend token
-            await axiosAuth.post('/api/auth/logout').catch(() => {
-                // Ignore errors on logout
-            });
+            // ✅ Remove token from localStorage
+            localStorage.removeItem('token');
+            await axiosAuth.post('/api/auth/logout').catch(() => { });
         } catch (error) {
             console.error('Backend logout error:', error);
         }
-        // Clear Firebase auth
         return signOut(auth);
     };
 
@@ -56,10 +52,14 @@ const AuthProvider = ({ children }) => {
         });
     };
 
-    const fetchUserRole = async (email) => {
+    const fetchUserRole = async (email, token) => {
         try {
             console.log('Fetching user role for:', email);
-            const response = await axiosAuth.get(`/api/users/${email}`);
+            const response = await axiosAuth.get(`/api/users/${email}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             console.log('User role fetched:', response.data);
             setUserRole(response.data);
             return response.data;
@@ -82,19 +82,22 @@ const AuthProvider = ({ children }) => {
                     const tokenResponse = await axiosAuth.post('/api/auth/jwt', {
                         email: currentUser.email
                     });
-                    console.log('✅ JWT token response:', tokenResponse.data);
 
-                    // ✅ Verify token was set
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+                    const token = tokenResponse.data.token;
+                    console.log('✅ JWT token received');
 
-                    // ✅ Fetch user role
-                    await fetchUserRole(currentUser.email);
+                    // ✅ Store token in localStorage
+                    localStorage.setItem('token', token);
+
+                    // ✅ Fetch user role with token
+                    await fetchUserRole(currentUser.email, token);
 
                 } catch (error) {
                     console.error('❌ Error in auth flow:', error.response?.data || error.message);
-                    // Don't logout on error, just log it
                 }
             } else {
+                // ✅ Remove token on logout
+                localStorage.removeItem('token');
                 setUserRole(null);
             }
 
