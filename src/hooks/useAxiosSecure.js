@@ -15,43 +15,48 @@ const useAxiosSecure = () => {
     const { logoutUser } = useAuth();
 
     useEffect(() => {
-        // ✅ Request interceptor - Add Authorization header
         const requestInterceptor = axiosSecure.interceptors.request.use(
             (config) => {
                 const token = localStorage.getItem('token');
 
                 if (token) {
                     config.headers.Authorization = `Bearer ${token}`;
-                    console.log('📤 Request with token:', config.method.toUpperCase(), config.url);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('📤 CLIENT REQUEST');
+                    console.log('🎯 URL:', config.url);
+                    console.log('🔑 Token (first 20 chars):', token.substring(0, 20) + '...');
+                    console.log('📋 Headers:', config.headers);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                 } else {
-                    console.log('⚠️ No token found for request:', config.url);
+                    console.log('⚠️ NO TOKEN FOUND IN LOCALSTORAGE');
+                    console.log('📍 For URL:', config.url);
                 }
 
                 return config;
             },
             (error) => {
-                console.error('❌ Request error:', error);
+                console.error('❌ Request interceptor error:', error);
                 return Promise.reject(error);
             }
         );
 
-        // ✅ Response interceptor
         const responseInterceptor = axiosSecure.interceptors.response.use(
             (response) => {
-                console.log('✅ Response:', response.config.url, response.status);
+                console.log('✅ Response received:', response.config.url, response.status);
                 return response;
             },
             async (error) => {
                 const status = error.response?.status;
 
-                console.error('❌ Response error:', {
-                    status,
-                    url: error.config?.url,
-                    message: error.response?.data?.message
-                });
+                console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.error('❌ RESPONSE ERROR');
+                console.error('🔢 Status:', status);
+                console.error('🎯 URL:', error.config?.url);
+                console.error('📨 Message:', error.response?.data?.message);
+                console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
                 if (status === 401 || status === 403) {
-                    console.log('🚪 Unauthorized - logging out...');
+                    console.log('🚪 Clearing token and logging out...');
                     localStorage.removeItem('token');
                     try {
                         await logoutUser();
